@@ -103,7 +103,7 @@ let
                           "dhall-yaml"
                         ]
                         # Test suite doesn't work on GHCJS
-                    ++  pkgsNew.lib.optional (!(compiler == "ghcjs")) "dhall"
+                    #++  pkgsNew.lib.optional (!(compiler == "ghcjs")) "dhall"
                         # Test suite fails on GHCJS due to `aeson` ordering
                         # HashMap values in a different order
                     ++  pkgsNew.lib.optional (!(compiler == "ghcjs")) "dhall-json"
@@ -352,10 +352,6 @@ let
   trivial = x: pkgs.runCommand "trivial" { inherit x; } "touch $out";
 
   makeStaticIfPossible = name:
-    if pkgs.stdenv.isLinux
-    then
-      pkgsStaticLinux.pkgsMusl.haskell.packages."${compiler}"."${name}-static"
-    else
       pkgs.haskell.lib.justStaticExecutables (pkgs.haskell.packages."${compiler}"."${name}");
 
   makeTarball = name: manDir:
