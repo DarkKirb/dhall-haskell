@@ -504,6 +504,26 @@ dependencyToNix url@URL{ authority, path } = do
                 _ -> do
                     die (NotAValidGistRepositoryURL url)
 
+        "git.chir.rs" -> do
+          let File{ directory, file } = path
+          let Dhall.Core.Directory{ components } = directory
+
+          case reverse (file : components) of
+            _owner : repo : "raw" : _type : _rev : rest -> do
+                    let fileArgument = Text.intercalate "/" rest
+
+                    let functionParameter = Just (repo, Nothing)
+
+                    let dependencyExpression =
+                                (Nix.mkSym repo @. "overridePackage")
+                            @@  Nix.attrsE
+                                    [ ("file", Nix.mkStr fileArgument ) ]
+
+                    return Dependency{..}
+            _ -> do
+                die (UnsupportedDomainDependency url authority)
+
+
         "gist.githubusercontent.com" -> do
             let File{ directory, file } = path
 
@@ -913,6 +933,7 @@ This tool currently only translates the following domains into Nix dependencies:
 * raw.githubusercontent.com
 * gist.githubusercontent.com
 * prelude.dhall-lang.org
+* git.chir.rs
 
 One of the Dhall project's dependencies:
 

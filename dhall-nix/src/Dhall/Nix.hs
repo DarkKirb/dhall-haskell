@@ -98,6 +98,7 @@ import Control.Exception (Exception)
 import Data.Fix (Fix (..))
 import Data.Foldable (toList)
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Typeable (Typeable)
 import Data.Void (Void, absurd)
@@ -153,6 +154,7 @@ import qualified Dhall.Pretty
 import qualified Dhall.TypeCheck
 import qualified NeatInterpolation
 import qualified Nix
+import qualified Debug.Trace
 
 {-| This is the exception type for all possible errors that might arise when
     translating the Dhall syntax tree to the Nix syntax tree
@@ -266,8 +268,9 @@ Right x: y: x + y
 -}
 dhallToNix :: Expr Src Void -> Either CompileError NExpr
 dhallToNix e =
-    loop (Dhall.Context.empty, rewriteShadowed (Dhall.Core.normalize e))
+    loop (Dhall.Context.empty, Debug.Trace.traceShow rewritten rewritten)
   where
+    rewritten = rewriteShadowed (Dhall.Core.normalize e)
     untranslatable = Nix.attrsE []
 
     -- This is an intermediate utility used to remove all occurrences of
@@ -319,16 +322,19 @@ dhallToNix e =
     renameShadowed :: Expr s Void -> Maybe (Expr s Void)
     renameShadowed (Lam cs FunctionBinding { functionBindingVariable = x, functionBindingAnnotation = a} b) = do
         (x', b') <- rename (x, b)
+        let b'' = fromMaybe b' (renameShadowed b')
 
-        return (Lam cs (Dhall.Core.makeFunctionBinding x' a) b')
+        return (Lam cs (Dhall.Core.makeFunctionBinding x' a) b'')
     renameShadowed (Pi cs x a b) = do
         (x', b') <- rename (x, b)
+        let b'' = fromMaybe b' (renameShadowed b')
 
-        return (Pi cs x' a b')
+        return (Pi cs x' a b'')
     renameShadowed (Let Binding{ variable = x, .. } a) = do
         (x' , a') <- rename (x, a)
+        let a'' = fromMaybe a' (renameShadowed a')
 
-        return (Let Binding{ variable = x', .. } a')
+        return (Let Binding{ variable = x', .. } a'')
     renameShadowed _ =
         Nothing
 
